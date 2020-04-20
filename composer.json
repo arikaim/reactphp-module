@@ -1,0 +1,20 @@
+{
+    "name": "arikaim/reactphp-module",
+    "description": "Arikam CMS ReactPHP Module",
+    "keywords": ["Module", "Arikaim CMS ReactPHP module"],
+    "type": "arikaim-module",
+    "license": "GPL-3.0-or-later",
+    "authors": [{
+        "name": "Konstantin Atanasov",
+        "email": "info@arikaim.com",
+        "homepage": "http://arikaim.com"
+    }],
+    "require": {
+        "php": ">=7.1",
+        "arikaim/installer": "*",
+        "react/react:": "^1.0.0"
+    },
+    "extra": {
+        "path": "reactphp"
+    }
+}

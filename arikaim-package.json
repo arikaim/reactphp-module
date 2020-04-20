@@ -1,0 +1,16 @@
+{
+    "title": "ReactPHP",
+    "name": "reactphp",
+    "version": "1.0.0",
+    "package-type": "module",
+    "class": "ReactPhp",
+    "description": "Event-driven, non-blocking I/O with PHP",
+    "type": "package",
+    "repository": "https://github.com/arikaim/reactphp-module",
+    "require": {
+        "composer": [
+            "react/react"
+        ]
+    },
+    "help": "https://reactphp.org"      
+}
