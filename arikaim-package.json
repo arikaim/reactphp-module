@@ -1,7 +1,7 @@
 {
     "title": "ReactPHP",
     "name": "reactphp",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "package-type": "module",
     "class": "ReactPhp",
     "description": "Event-driven, non-blocking I/O with PHP",

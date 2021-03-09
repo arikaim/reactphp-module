@@ -7,7 +7,7 @@
  * @license     http://www.arikaim.com/license
  * 
 */
-namespace Arikaim\Modules\Recaptcha;
+namespace Arikaim\Modules\Reactphp;
 
 use React\EventLoop\Factory;
 
@@ -19,18 +19,14 @@ use Arikaim\Core\Extension\Module;
 class ReactPhp extends Module
 {   
     /**
-     * Event loop instance
+     * Install module
      *
-     * @var LoopInterface
+     * @return void
      */
-    private $loop;
-
-    /**
-     * Constructor
-     */
-    public function __construct()
+    public function install()
     {
-        $this->loop = $this->createLoop();
+        $this->installDriver('Arikaim\\Modules\\Reactphp\\Drivers\\QueueWorkerDriver');
+        $this->registerConsoleCommand('QueueWorker');
     }
 
     /**
@@ -38,19 +34,9 @@ class ReactPhp extends Module
      *
      * @return mixed
      */
-    public function createLoop()
+    public function getInstance()
     {
         return Factory::create();
-    }
-
-    /**
-     * Get event loop instance
-     *
-     * @return LoopInterface
-     */
-    public function getLoop()
-    {
-        return $this->loop;
     }
 
     /**
@@ -60,6 +46,6 @@ class ReactPhp extends Module
      */
     public function test()
     {
-        return class_exists(Factory::class);
+        return \class_exists(Factory::class);
     }
 }
