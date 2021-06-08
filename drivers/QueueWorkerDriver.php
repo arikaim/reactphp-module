@@ -12,13 +12,14 @@ namespace Arikaim\Modules\Reactphp\Drivers;
 use Arikaim\Core\System\Process;
 use Arikaim\Core\Driver\Traits\Driver;
 use Arikaim\Core\Interfaces\Driver\DriverInterface;
-use Arikaim\Core\Interfaces\QueueWorkerInterface;
+use Arikaim\Core\Interfaces\WorkerManagerInterface;
 use Arikaim\Core\Arikaim;
+use Exception;
 
 /**
  *  Queue worker manager driver
  */
-class QueueWorkerDriver implements DriverInterface, QueueWorkerInterface
+class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
 {   
     use Driver;
    
@@ -42,9 +43,45 @@ class QueueWorkerDriver implements DriverInterface, QueueWorkerInterface
      */
     public function run(): bool
     {
-        $pid = Process::startBackground($this->getProccessCommand());
+        $result = $this->isRunning();
+        if ($result == true) {
+            return true;
+        }
 
-        return ($pid > 0);
+        Process::startBackground($this->getProccessCommand());
+        sleep(2);
+
+        return $this->isRunning();
+    }
+
+    /**
+     * Get host
+     *
+     * @return string
+     */
+    public function getHost(): string 
+    {
+        return '0.0.0.0';
+    }
+
+    /**
+     * Get port
+     *
+     * @return string
+     */
+    public function getPort(): string 
+    {
+        return '3080';
+    }
+
+    /**
+     * Get url 
+     *
+     * @return string
+     */
+    protected function getUrl(): string
+    {
+        return $this->getHost() . ':' . $this->getPort();
     }
 
     /**
@@ -54,8 +91,9 @@ class QueueWorkerDriver implements DriverInterface, QueueWorkerInterface
      */
     public function getProccessCommand(): string
     {
-        $php = (Process::findPhp() === false) ? 'php' : Process::findPhp();        
-        return  $php . ' ' . ROOT_PATH . BASE_PATH . '/cli queue:worker >> /dev/null 2>&1 ';
+        $php = (Process::findPhp() === false) ? 'php' : Process::findPhp();   
+
+        return $php . ' ' . ROOT_PATH . BASE_PATH . '/cli queue:worker ';
     }
 
     /**
@@ -65,17 +103,24 @@ class QueueWorkerDriver implements DriverInterface, QueueWorkerInterface
      */
     public function isRunning(): bool
     {
-        $pid = Arikaim::get('options')->get('queue.worker.pid',null);
-        if (empty($pid) == true) {
+        try {          
+            $response = Arikaim::get('http')->put($this->getUrl(),[
+                'form_params' => [
+                    'command' => 'alive'
+                ]
+            ]);
+    
+            $json = $response->getBody()->getContents();
+            $result = \json_decode($json,true);
+            if (\is_array($result) == false) {
+                return false;
+            }
+
+            return ($result['result']['status'] == 1);
+            
+        } catch (Exception $e) {
             return false;
         }
-
-        $result = Process::isRunning($pid);
-        if ($result == false) {
-            Arikaim::get('options')->set('queue.worker.pid',null);
-        }
-
-        return $result;
     }
 
     /**
@@ -85,19 +130,16 @@ class QueueWorkerDriver implements DriverInterface, QueueWorkerInterface
      */
     public function stop(): bool
     {
-        $pid = Arikaim::get('options')->get('queue.worker.pid',null);
-        if (empty($pid) == true) {
-            return false;
+        try {
+            Arikaim::get('http')->put($this->getUrl(),[
+                'form_params' => [
+                    'command' => 'stop'
+                ]
+            ]);          
+        } catch (Exception $e) {          
         }
-        
-        Process::stop($pid);   
 
-        if ($this->isRunning($pid) == false) {
-            Arikaim::get('options')->set('queue.worker.pid','');   
-            return true;
-        }
-      
-        return false;
+        return ($this->isRunning() == false);
     }
 
     /**
@@ -127,9 +169,10 @@ class QueueWorkerDriver implements DriverInterface, QueueWorkerInterface
      */
     public function getDetails(): array
     {
-        return [
-            'pid'     => Arikaim::get('options')->get('queue.worker.pid',null),
-            'command' => $this->getProccessCommand()
+        return [           
+            'command' => $this->getProccessCommand(),
+            'host'    => $this->getHost(),
+            'port'    => $this->getPort()
         ];
     }
 

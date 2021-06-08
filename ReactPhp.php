@@ -26,7 +26,7 @@ class ReactPhp extends Module
     public function install()
     {
         $this->installDriver('Arikaim\\Modules\\Reactphp\\Drivers\\QueueWorkerDriver');
-        $this->registerConsoleCommand('QueueWorker');
+        $this->registerConsoleCommand('QueueWorkerCommand');
     }
 
     /**
