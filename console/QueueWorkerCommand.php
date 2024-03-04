@@ -9,7 +9,7 @@
  */
 namespace Arikaim\Modules\Reactphp\Console;
 
-use Arikaim\Modules\Reactphp\Worker\QueueWorker;
+use Arikaim\Modules\Reactphp\Worker\ReactPhpQueueWorker;
 use Arikaim\Core\Console\ConsoleCommand;
 use Arikaim\Core\System\System;
 use Arikaim\Core\Arikaim;
@@ -26,7 +26,7 @@ class QueueWorkerCommand extends ConsoleCommand
      */
     protected function configure()
     {
-        $this->setName('queue:worker');
+        $this->setName('queue:worker:reactphp');
         $this->setDescription('ReactPhp Queue worker');        
     }
 
@@ -47,8 +47,14 @@ class QueueWorkerCommand extends ConsoleCommand
             return;
         }
 
-        $worker = new QueueWorker($driver->getHost(),$driver->getPort(),[]);
+        $this->showTitle();
+
+        $worker = new ReactPhpQueueWorker($driver->getHost(),$driver->getPort(),[]);
         $worker->init();
+        $worker->onJobExecuted(function($job) {          
+            $this->writeFieldLn('Executed job ',$job->getName());
+        });
+
         $worker->run();      
     }
 }

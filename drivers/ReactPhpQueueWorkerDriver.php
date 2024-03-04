@@ -9,17 +9,14 @@
 */
 namespace Arikaim\Modules\Reactphp\Drivers;
 
-use Arikaim\Core\System\Process;
 use Arikaim\Core\Driver\Traits\Driver;
 use Arikaim\Core\Interfaces\Driver\DriverInterface;
 use Arikaim\Core\Interfaces\WorkerManagerInterface;
-use Arikaim\Core\Arikaim;
-use Exception;
 
 /**
  *  Queue worker manager driver
  */
-class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
+class ReactPhpQueueWorkerDriver implements DriverInterface, WorkerManagerInterface
 {   
     use Driver;
    
@@ -43,15 +40,7 @@ class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
      */
     public function run(): bool
     {
-        $result = $this->isRunning();
-        if ($result == true) {
-            return true;
-        }
-
-        Process::startBackground($this->getProccessCommand());
-        sleep(2);
-
-        return $this->isRunning();
+        return false;
     }
 
     /**
@@ -61,7 +50,7 @@ class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
      */
     public function getHost(): string 
     {
-        return '0.0.0.0';
+        return '127.0.0.1';
     }
 
     /**
@@ -71,7 +60,7 @@ class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
      */
     public function getPort(): string 
     {
-        return '3080';
+        return '3000';
     }
 
     /**
@@ -85,42 +74,13 @@ class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
     }
 
     /**
-     * Get worker process command
-     *
-     * @return string
-     */
-    public function getProccessCommand(): string
-    {
-        $php = (Process::findPhp() === false) ? 'php' : Process::findPhp();   
-
-        return $php . ' ' . ROOT_PATH . BASE_PATH . '/cli queue:worker ';
-    }
-
-    /**
      * Return true if worker is running
      *    
      * @return boolean
      */
     public function isRunning(): bool
     {
-        try {          
-            $response = Arikaim::get('http')->put($this->getUrl(),[
-                'form_params' => [
-                    'command' => 'alive'
-                ]
-            ]);
-    
-            $json = $response->getBody()->getContents();
-            $result = \json_decode($json,true);
-            if (\is_array($result) == false) {
-                return false;
-            }
-
-            return ($result['result']['status'] == 1);
-            
-        } catch (Exception $e) {
-            return false;
-        }
+        return false;
     }
 
     /**
@@ -130,16 +90,7 @@ class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
      */
     public function stop(): bool
     {
-        try {
-            Arikaim::get('http')->put($this->getUrl(),[
-                'form_params' => [
-                    'command' => 'stop'
-                ]
-            ]);          
-        } catch (Exception $e) {          
-        }
-
-        return ($this->isRunning() == false);
+        return false;
     }
 
     /**
@@ -169,8 +120,7 @@ class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
      */
     public function getDetails(): array
     {
-        return [           
-            'command' => $this->getProccessCommand(),
+        return [                       
             'host'    => $this->getHost(),
             'port'    => $this->getPort()
         ];
@@ -194,6 +144,15 @@ class QueueWorkerDriver implements DriverInterface, WorkerManagerInterface
      * @return void
      */
     public function createDriverConfig($properties)
-    {                     
+    {         
+        $properties->property('interval',function($property) {
+            $property
+                ->title('Loop Interval')
+                ->type('list')
+                ->default('1')
+                ->value('1')
+                ->items([1,5])
+                ->readonly(false);              
+        });             
     }
 }

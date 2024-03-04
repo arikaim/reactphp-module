@@ -9,21 +9,16 @@
  */
 namespace Arikaim\Modules\Reactphp\Worker;
 
-use React\EventLoop\Factory;
-use React\Http\HttpServer;
-use React\Socket\SocketServer;
+use React\EventLoop\Loop;
 
-
-use Arikaim\Core\Arikaim;
 use Arikaim\Core\Utils\DateTime;
-use Arikaim\Core\Http\ApiResponse;
 use Arikaim\Core\Interfaces\WorkerInterface;
-use Exception;
+use Closure;
 
 /**
  * Queue worker 
  */
-class QueueWorker implements WorkerInterface
+class ReactPhpQueueWorker implements WorkerInterface
 {  
     /**
      * Server host
@@ -47,6 +42,13 @@ class QueueWorker implements WorkerInterface
     protected $options;
 
     /**
+     * Undocumented variable
+     *
+     * @var null|Closure
+     */
+    protected $onJobExecutedCallback;
+
+    /**
      * Constructor
      *
      * @param string $host
@@ -58,6 +60,7 @@ class QueueWorker implements WorkerInterface
         $this->host = $host;
         $this->port = $port;
         $this->options = $options;
+        $this->onJobExecutedCallback = null;
     }
 
     /**
@@ -79,7 +82,9 @@ class QueueWorker implements WorkerInterface
      */
     public function init(): void 
     {
-        DateTime::setTimeZone(Arikaim::options()->get('time.zone'));     
+        global $arikaim;
+
+        DateTime::setTimeZone($arikaim->get('options')->get('time.zone'));     
     }
 
     /**
@@ -89,8 +94,17 @@ class QueueWorker implements WorkerInterface
      */
     public function stop(): void
     {
-        echo 'Exit ' . PHP_EOL;
-        exit();
+    }
+
+    /**
+     * Set on job executed callback
+     *
+     * @param Closure $callback
+     * @return void
+     */
+    public function onJobExecuted(Closure $callback): void
+    {
+        $this->onJobExecutedCallback = $callback;
     }
 
     /**
@@ -102,24 +116,21 @@ class QueueWorker implements WorkerInterface
     {
         global $arikaim;
 
-        $loop = Factory::create();
+        $interval = $this->getOption('interval',1.0);
+        $loop = Loop::get();
         
-        $loop->addPeriodicTimer($this->getOption('interval',1.0),function($arikaim) {            
+        $loop->addPeriodicTimer($interval,function() use($arikaim) {   
+          
             $job = $arikaim->get('queue')->getNext();
-            if ($job !== null) {
-                echo 'execute job ' . PHP_EOL;
+            if ($job !== null) {              
                 $job = $arikaim->get('queue')->executeJob($job);
-            }         
-        });
 
-        $server = new HttpServer($loop);
-        
-        $server->on('error',function (Exception $e) {
-            echo 'Error: ' . $e->getMessage() . PHP_EOL;
+                if (\is_callable($this->onJobExecutedCallback) == true && $job != null) {                  
+                    ($this->onJobExecutedCallback)($job);
+                }
+            }        
+             
         });
-                
-        $socket = new SocketServer($this->host . ':' . $this->port);
-        $server->listen($socket);
 
         $loop->run();
     }   
