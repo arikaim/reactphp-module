@@ -10,7 +10,9 @@
 namespace Arikaim\Modules\Reactphp\Worker;
 
 use React\EventLoop\Factory;
-use React\Http\Server;
+use React\Http\HttpServer;
+use React\Socket\SocketServer;
+
 
 use Arikaim\Core\Arikaim;
 use Arikaim\Core\Utils\DateTime;
@@ -98,46 +100,25 @@ class QueueWorker implements WorkerInterface
      */
     public function run(): void 
     {
+        global $arikaim;
+
         $loop = Factory::create();
         
-        $loop->addPeriodicTimer($this->getOption('interval',1.0),function() {            
-            $job = Arikaim::get('queue')->getNext();
-            if (\is_null($job) == false) {
+        $loop->addPeriodicTimer($this->getOption('interval',1.0),function($arikaim) {            
+            $job = $arikaim->get('queue')->getNext();
+            if ($job !== null) {
                 echo 'execute job ' . PHP_EOL;
-                $job = Arikaim::get('queue')->executeJob($job);
+                $job = $arikaim->get('queue')->executeJob($job);
             }         
         });
 
-        $server = new Server($loop,
-            new \React\Http\Middleware\RequestBodyParserMiddleware(),    
-            function ($request) {
-                $method = $request->getMethod();
-                $body = $request->getParsedBody();
-                $command = $body['command'] ?? null;
-                echo 'Request: ' . $method . '  ' . $request->getUri() . PHP_EOL;
-              
-                $response = new ApiResponse(Arikaim::response());
-                $result = [
-                    'host'    => $this->host,
-                    'port'    => $this->port,
-                    'command' => $command,
-                    'status'  => 1
-                ];
-              
-                $response->setResult($result);
-                                
-                if ($command == 'stop') {
-                    $this->stop();
-                }
-
-                return $response->getResponse();
-        });
+        $server = new HttpServer($loop);
         
         $server->on('error',function (Exception $e) {
             echo 'Error: ' . $e->getMessage() . PHP_EOL;
         });
                 
-        $socket = new \React\Socket\Server($this->host . ':' . $this->port,$loop);
+        $socket = new SocketServer($this->host . ':' . $this->port);
         $server->listen($socket);
 
         $loop->run();
